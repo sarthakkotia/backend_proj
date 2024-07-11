@@ -25,34 +25,46 @@ const registerUser = asyncHandler(async (req, res) => {
     let email = data.email
     let username = data.username
     let password = data.password
+    console.log("---------------------data-----------------------")
+    console.log(data)
+    console.log("---------------------data-----------------------")
+
     // if(fullName == ""){
     //     return new ApiError(400, "Full Name is required")
     // }
+    console.log("test here after data")
     if(
         [fullName, email, username, password].some((field) => {
             // if field exists then trim it and even afer trim it's empty then return true
             return (field?.trim() === "")
         })
     ){
-        throw new APIError(400, "all fields are reuqired")
+        throw new APIError(400, "all fields are required")
     }
-
-    const existedUser = User.findOne({
+    console.log("existed user after")
+    const existedUser = await User.findOne({
         $or: [{username}, {email}]
     })
-
+    // console.log(existedUser)
     if(existedUser){
         throw new APIError(409, "User already Exists")
     }
 
+    console.log("test here for avatar")
     const avatarLocalPath = req.files?.avatar[0]?.path
     // console.log(req.files)
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
-
+    console.log(req.files)
+    // const coverImageLocalPath = req.files?.coverImage?.[0]?.path
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
+    console.log("test here for cover Image done")
     if(!avatarLocalPath){
         throw new APIError(400, "Avatar is required")
     }
 
+    console.log("upload on cloudinary check")
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
@@ -77,15 +89,16 @@ const registerUser = asyncHandler(async (req, res) => {
         password: password,
         username: username.toLowerCase()
     })
-
     const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken"
+        '-password -refreshToken'
     )
+    // console.log(createdUser)
 
-    if(createdUser){
+    if(!createdUser){
         throw new APIError(500, "Semothing went wring while registering a user")
     }
 
+    console.log("User registered successfully")
     return res.status(201).json(
         new ApiResponse(201, createdUser, "User registered successfully")
     )
