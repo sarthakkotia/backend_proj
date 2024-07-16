@@ -282,9 +282,9 @@ const changeCurrentUserPassword = asyncHandler( async (req,res) => {
     const newPassword = req.body.newPassword
     const user = await User.findById(req.user?._id)
     
+    isPasswordValid = await user.isPasswordCorrect(currentPassword)
     //compare password
     if(!isPasswordValid){
-        isPasswordValid = await user.isPasswordCorrect(currentPassword)
         throw new APIError(400, "Current Password is incorrect")
         
     }
