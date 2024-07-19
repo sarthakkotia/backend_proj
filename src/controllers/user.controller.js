@@ -213,8 +213,8 @@ const logoutUser = asyncHandler(async (req,res) => {
     await User.findByIdAndUpdate(
         req.user._id, 
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1
             }
         },
         {
@@ -283,7 +283,8 @@ const changeCurrentUserPassword = asyncHandler( async (req,res) => {
     const newPassword = req.body.newPassword
     const user = await User.findById(req.user?._id)
     
-    isPasswordValid = await user.isPasswordCorrect(currentPassword)
+    const isPasswordValid = await user.isPasswordCorrect(currentPassword)
+    // console.log(await user.isPasswordCorrect(currentPassword))
     //compare password
     if(!isPasswordValid){
         throw new APIError(400, "Current Password is incorrect")
@@ -313,7 +314,7 @@ const updateAccountDetails = asyncHandler( async (req,res) => {
     if(!fullName || !email){
         throw new APIError(400, "All fields are required")
     }
-
+    console.log("mongodb testing")
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
@@ -386,10 +387,13 @@ const updateUserCoverImage = asyncHandler( async(req,res) => {
 
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-    const {username} = req.params
+    const {username} = req.params   
     if(!username?.trim()){
         throw new APIError(400, "username is missing")
     }
+    // console.log(username)
+    // throw new APIError(200, "ll")
+    // return new ApiResponse(200, username)
 
     const channel = await User.aggregate([
         {
@@ -403,7 +407,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 localField: "_id",
                 foreignField: "channel",
                 as: "subscribers"
-
             }
         },
         {
@@ -420,10 +423,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                     $size: "$subscribers"
                 },
                 channelsSubscribedToCount: {
-                    $size: "subscribedTo"
+                    $size: "$subscribedTo"
                 },
                 isSubscribed: {
-                    $condition: {
+                    $cond: {
                         if: {$in: [req.user?._id, "$subscribers.subscriber"]},
                         then: true,
                         else: false
@@ -444,6 +447,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             }
         }
     ])
+    // console.log(channel)
+    // throw new APIError(400, "ll")
 
     // console.log(channel)
     if(!channel?.length){
@@ -457,12 +462,13 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 })
 
 const getWatchHistory = asyncHandler(async (req,res) => {
-    const user = User.aggregate([
+    const user = await User.aggregate([
         {
             $match: {
                 _id: new mongoose.Types.ObjectId(req.user._id)
             }
-        },{
+        },
+        {
             $lookup: {
                 from: "videos",
                 localField: "watchHistory",
